@@ -31,7 +31,7 @@ export default function Home() {
   return <main className="container">
     <header className="header">
       <div><div className="brand">Agent<span>X</span></div><div className="muted">AI-powered PC monitoring & diagnostics</div></div>
-      <div className="status"><span className="dot" style={{ background: online ? "#55e6a5" : "#ff8f8f" }} />{online ? "Agent online" : "Waiting for agent"}</div>
+      <div className="status"><span className="dot" style={{ background: online ? undefined : "#ff8f8f" }} />{online ? "Agent online" : "Waiting for agent"}</div>
     </header>
 
     {error && <div className="card section">Unable to reach the monitoring backend. Check Vercel environment variables.</div>}
@@ -48,6 +48,6 @@ export default function Home() {
       <section className="card section"><h2>Recent anomalies</h2>{data.anomalies.length === 0 ? <div className="empty">No anomalies detected.</div> : data.anomalies.map((a, i) => <div className="row" key={`${a.detected_at}-${i}`}><div><b>{a.metric}</b><div className="muted">{a.message}</div></div><span className={`badge ${a.severity}`}>{a.severity}</span></div>)}</section>
       <section className="card section"><h2>Latest diagnosis</h2>{data.diagnosis ? <><div><b>{data.diagnosis.root_cause}</b> · {(data.diagnosis.confidence * 100).toFixed(0)}% confidence</div><p className="muted">{data.diagnosis.summary}</p><ul>{data.diagnosis.recommendations.map((r, i) => <li key={i}>{r}</li>)}</ul></> : <div className="empty">Diagnosis will appear when an anomaly is detected.</div>}</section>
     </>}
-    <div className="footer">AgentX prototype · polling every 5 seconds · anomaly engine is deterministic; AI diagnosis is an optional next layer.</div>
+    <div className="footer">AgentX prototype · polling every 5 seconds · deterministic anomaly engine + evidence-based diagnosis.</div>
   </main>;
 }
