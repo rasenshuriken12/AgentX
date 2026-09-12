@@ -1,0 +1,11 @@
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
+.agentx_device_id
+node_modules/
+.next/
+out/
+.vercel/
+.DS_Store
