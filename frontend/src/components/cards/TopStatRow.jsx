@@ -1,70 +1,70 @@
-import { Wifi, Server, Cpu, AlertTriangle, FileText } from "lucide-react";
-import StatCard from "./StatCard";
+import { AlertTriangle, FileText, Activity, Gauge } from "lucide-react";
 import { agentInfo } from "../../data/mockData";
 
 export default function TopStatRow({ stats, tick }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-      {/* Edge Agent */}
-      <StatCard
-        label="Edge Agent"
-        icon={<Wifi className="w-4 h-4 text-agentx-teal" />}
-        value={
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-agentx-tealSoft text-agentx-teal text-sm font-bold border border-agentx-teal/20">
-            {agentInfo.status}
-          </span>
-        }
-        footer={`${tick * 2 + 362} ticks`}
-      />
-
-      {/* Hostname */}
-      <StatCard
-        label="Hostname"
-        icon={<Server className="w-4 h-4 text-agentx-muted" />}
-        value={<span className="text-lg font-bold">{agentInfo.hostname}</span>}
-        footer={agentInfo.os}
-      />
-
-      {/* CPU */}
-      <StatCard
-        label="CPU"
-        icon={<Cpu className="w-4 h-4 text-agentx-muted" />}
-        value={<span className="text-sm font-semibold leading-snug">{agentInfo.cpu}</span>}
-        footer={agentInfo.ram}
-      />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Health Score */}
+      <Card
+        icon={<Gauge className="w-4 h-4 text-agentx-teal" />}
+        label="Health Score"
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-extrabold">{stats.healthScore}</span>
+          <span className="text-xs text-agentx-muted">/ 100</span>
+        </div>
+        <p className="text-xs mt-1 text-agentx-green font-semibold">All systems nominal</p>
+      </Card>
 
       {/* Anomalies */}
-      <StatCard
-        label="Anomalies (24h)"
+      <Card
         icon={<AlertTriangle className="w-4 h-4 text-agentx-yellow" />}
-        value={
-          <span className="text-2xl font-bold">
-            {stats.anomalies24h}{" "}
-            <span className="text-sm font-medium text-agentx-red">
-              {stats.criticalCount} critical
-            </span>
+        label="Anomalies (24h)"
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-extrabold">{stats.anomalies24h}</span>
+          <span className="text-xs font-medium text-agentx-red">
+            {stats.criticalCount} critical
           </span>
-        }
-      />
+        </div>
+        <p className="text-xs mt-1 text-agentx-muted">On-device detections</p>
+      </Card>
+
+      {/* Agent Uptime */}
+      <Card
+        icon={<Activity className="w-4 h-4 text-agentx-blue" />}
+        label="Agent Uptime"
+      >
+        <div className="text-2xl font-extrabold tracking-tight">
+          {formatUptime(agentInfo.uptimeSeconds + tick * 2)}
+        </div>
+        <p className="text-xs mt-1 text-agentx-muted">Since last restart</p>
+      </Card>
 
       {/* AI Reports */}
-      <StatCard
-        label="AI Reports"
+      <Card
         icon={<FileText className="w-4 h-4 text-agentx-purple" />}
-        value={<span className="text-2xl font-bold">{stats.aiReports}</span>}
-        footer={`conf ${stats.aiConfidence}%`}
-      />
+        label="AI Reports"
+      >
+        <div className="text-3xl font-extrabold">{stats.aiReports}</div>
+        <p className="text-xs mt-1 text-agentx-muted">
+          Conf {stats.aiConfidence}% · cloud LLM
+        </p>
+      </Card>
+    </div>
+  );
+}
 
-      {/* Uptime */}
-      <StatCard
-        label="Agent Uptime"
-        icon={<span className="text-xs">⏱</span>}
-        value={
-          <span className="text-2xl font-bold">
-            {formatUptime(agentInfo.uptimeSeconds + tick * 2)}
-          </span>
-        }
-      />
+function Card({ icon, label, children }) {
+  return (
+    <div className="bg-agentx-card border border-agentx-border rounded-xl p-5 flex flex-col justify-between min-h-[120px]">
+      <div className="flex items-start justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-agentx-muted">
+          {label}
+        </span>
+        {icon}
+      </div>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
