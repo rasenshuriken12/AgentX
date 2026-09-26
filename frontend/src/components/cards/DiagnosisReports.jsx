@@ -12,7 +12,8 @@ export default function DiagnosisReports({ reports, onRefresh }) {
   const open = reports.find((r) => r.id === openId);
 
   return (
-    <div className="bg-agentx-card border border-agentx-border rounded-xl flex flex-col">
+    <div className="bg-agentx-card border border-agentx-border rounded-xl flex flex-col h-[520px]">
+      {/* Header — fixed at top */}
       <div className="p-5 border-b border-agentx-border flex items-start justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
@@ -32,12 +33,14 @@ export default function DiagnosisReports({ reports, onRefresh }) {
       </div>
 
       {open ? (
-        <div className="p-4 overflow-y-auto" style={{ maxHeight: "500px" }}>
+        /* Detail view — scrolls inside the same box */
+        <div className="p-4 overflow-y-auto flex-1">
           <ReportDetail report={open} onBack={() => setOpenId(null)} />
         </div>
       ) : (
         <>
-          <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: "330px" }}>
+          {/* List view — 3 cards then scroll */}
+          <div className="p-4 space-y-3 overflow-y-auto flex-1">
             {reports.map((r) => (
               <ReportListItem key={r.id} report={r} onClick={() => setOpenId(r.id)} />
             ))}

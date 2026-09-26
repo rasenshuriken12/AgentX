@@ -1,48 +1,55 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
-  LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
-  ReferenceLine, Area, AreaChart, Legend,
+  AreaChart, Area, Line, ResponsiveContainer, XAxis, YAxis, Tooltip,
+  CartesianGrid, ReferenceLine, Legend,
 } from "recharts";
-import { RefreshCw, ChevronDown, Check } from "lucide-react";
-import { generateSeries } from "../../data/mockData";
+import { RefreshCw, ChevronDown, Check, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import {
+  METRIC_OPTIONS, TIME_RANGES,
+  generateSeriesForRange, formatAxisTick, compareOffsetMs, stats,
+  generateBeforeUpdateSeries,
+} from "../../data/historicalData";
 
-export const METRIC_OPTIONS = [
-  { id: "process_count", label: "Process Count",   unit: "procs", max: 500,  color: "#7c3aed" },
-  { id: "cpu_usage",     label: "CPU Usage",       unit: "%",     max: 100,  color: "#0d9488" },
-  { id: "memory_usage",  label: "Memory Usage",    unit: "%",     max: 100,  color: "#2563eb" },
-  { id: "disk_io",       label: "Disk I/O",        unit: "MB/s",  max: 200,  color: "#16a34a" },
-  { id: "network",       label: "Network Throughput", unit: "Mbps", max: 100, color: "#06b6d4" },
-  { id: "cpu_temp",      label: "CPU Temperature", unit: "°C",    max: 100,  color: "#dc2626" },
-  { id: "gpu_usage",     label: "GPU Usage",       unit: "%",     max: 100,  color: "#a855f7" },
-];
-
-const BASE_SERIES = {
-  process_count: { base: 310, variance: 20, max: 500 },
-  cpu_usage:     { base: 32,  variance: 15, max: 100 },
-  memory_usage:  { base: 55,  variance: 10, max: 100 },
-  disk_io:       { base: 40,  variance: 25, max: 200 },
-  network:       { base: 12,  variance: 15, max: 100 },
-  cpu_temp:      { base: 62,  variance: 6,  max: 100 },
-  gpu_usage:     { base: 18,  variance: 12, max: 100 },
+const COMPARE_LABELS = {
+  off: "Off",
+  prev: "Previous period",
+  yesterday: "Yesterday",
+  last_week: "Last week",
+  last_month: "Last month",
+  before_update: "Before update",
 };
 
-export default function HistoricalChart({ metric, onMetricChange, range = "1h" }) {
+export default function HistoricalChart({ metric, range, compare, onMetricChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const selected = METRIC_OPTIONS.find((m) => m.id === metric) || METRIC_OPTIONS[0];
+  const selected = METRIC_OPTIONS.find((m) => m.id === metric) || METRIC_OPTIONS[1];
+  const rangeMeta = TIME_RANGES.find((r) => r.id === range) || TIME_RANGES[0];
 
-  // Regenerate data whenever metric or range changes
-  const data = useMemo(() => {
-    const cfg = BASE_SERIES[metric] || BASE_SERIES.cpu_usage;
-    return generateSeries(120, cfg.base, cfg.variance, cfg.max);
-  }, [metric, range]);
+  const { data, currentStats, previousStats } = useMemo(() => {
+    const now = Date.now();
+    const current = generateSeriesForRange(metric, range, 0, now);
 
-  // Compute baseline (average) and band
-  const values = data.map((d) => d.v);
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const stddev = Math.sqrt(values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length);
-  const bandHigh = avg + stddev;
-  const bandLow  = Math.max(0, avg - stddev);
+    let previous = [];
+    if (compare === "before_update") {
+      previous = generateBeforeUpdateSeries(metric, range);
+    } else if (compare !== "off") {
+      const offset = compareOffsetMs(compare, range);
+      previous = generateSeriesForRange(metric, range, offset, now);
+    }
+
+    const len = Math.max(current.length, previous.length);
+    const merged = Array.from({ length: len }, (_, i) => ({
+      t: current[i]?.t ?? previous[i]?.t,
+      current: current[i]?.v,
+      previous: previous[i]?.v,
+    }));
+
+    return {
+      data: merged,
+      currentStats: stats(current.map((d) => d.v)),
+      previousStats: previous.length ? stats(previous.map((d) => d.v)) : null,
+    };
+  }, [metric, range, compare]);
 
   useEffect(() => {
     const onClick = (e) => {
@@ -52,18 +59,25 @@ export default function HistoricalChart({ metric, onMetricChange, range = "1h" }
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  const delta = previousStats
+    ? ((currentStats.avg - previousStats.avg) / previousStats.avg) * 100
+    : null;
+
+  const compareLabel = COMPARE_LABELS[compare] || "Comparison";
+
   return (
-    <div className="bg-agentx-card border border-agentx-border rounded-xl p-5">
+    <div id="agentx-historical-chart" className="bg-agentx-card border border-agentx-border rounded-xl p-5">
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div>
           <h2 className="font-bold">Historical Metric Trend</h2>
           <p className="text-xs text-agentx-muted mt-1">
-            {selected.label} · last 600 samples · avg {avg.toFixed(1)} {selected.unit}
+            {selected.label} · {rangeMeta.label}
+            {compare !== "off" && ` vs ${compareLabel.toLowerCase()}`}
+            {" · "}avg {currentStats.avg.toFixed(1)} {selected.unit}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Dropdown */}
           <div className="relative" ref={ref}>
             <button
               onClick={() => setOpen((o) => !o)}
@@ -103,8 +117,31 @@ export default function HistoricalChart({ metric, onMetricChange, range = "1h" }
         </div>
       </div>
 
-      {/* Chart — key tied to metric forces remount */}
-      <ResponsiveContainer width="100%" height={320} key={`${metric}-${range}`}>
+      {delta !== null && (
+        <div className="mb-3 flex items-center gap-2 text-xs">
+          <span className="text-agentx-muted">vs {compareLabel}:</span>
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
+              Math.abs(delta) < 2
+                ? "bg-agentx-bg text-agentx-muted"
+                : delta > 0
+                ? "bg-agentx-redSoft text-agentx-red"
+                : "bg-agentx-greenSoft text-agentx-green"
+            }`}
+          >
+            {Math.abs(delta) < 2 ? <Minus className="w-3 h-3" /> :
+             delta > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {delta > 0 ? "+" : ""}{delta.toFixed(1)}%
+          </span>
+          {compare === "before_update" && (
+            <span className="text-agentx-muted">
+              (kernel 6.8 → 7.0 · {new Date().toLocaleDateString()})
+            </span>
+          )}
+        </div>
+      )}
+
+      <ResponsiveContainer width="100%" height={320} key={`${metric}-${range}-${compare}`}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="agentxGradient" x1="0" y1="0" x2="0" y2="1">
@@ -113,23 +150,67 @@ export default function HistoricalChart({ metric, onMetricChange, range = "1h" }
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "#9ca3af" }} />
+          <XAxis
+            dataKey="t"
+            tick={{ fontSize: 10, fill: "#9ca3af" }}
+            tickFormatter={(v) => formatAxisTick(v, range)}
+            minTickGap={40}
+          />
           <YAxis domain={[0, selected.max]} tick={{ fontSize: 10, fill: "#9ca3af" }} />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v) => [`${v} ${selected.unit}`, selected.label]}
+            labelFormatter={(v) => new Date(v).toLocaleString()}
+            formatter={(value, name) => [
+              `${value} ${selected.unit}`,
+              name === "current" ? "Current" : compareLabel,
+            ]}
           />
-          <ReferenceLine y={avg}      stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "avg", position: "right", fontSize: 10, fill: "#94a3b8" }} />
-          <ReferenceLine y={bandHigh} stroke="#cbd5e1" strokeDasharray="2 4" />
-          <ReferenceLine y={bandLow}  stroke="#cbd5e1" strokeDasharray="2 4" />
-          <Area type="monotone" dataKey="v" stroke={selected.color} strokeWidth={2} fill="url(#agentxGradient)" />
+          {compare !== "off" && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          <ReferenceLine
+            y={currentStats.avg}
+            stroke="#94a3b8"
+            strokeDasharray="4 4"
+            label={{ value: "avg", position: "right", fontSize: 10, fill: "#94a3b8" }}
+          />
+          {compare !== "off" && (
+            <Line
+              name={compareLabel}
+              type="monotone"
+              dataKey="previous"
+              stroke="#cbd5e1"
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              dot={false}
+              connectNulls
+            />
+          )}
+          <Area
+            name="Current"
+            type="monotone"
+            dataKey="current"
+            stroke={selected.color}
+            strokeWidth={2}
+            fill="url(#agentxGradient)"
+            connectNulls
+          />
         </AreaChart>
       </ResponsiveContainer>
 
-      <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-agentx-muted">
-        <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-slate-400" /> Average</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-slate-300" /> Healthy band (±1σ)</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <StatChip label="Average" value={`${currentStats.avg.toFixed(1)} ${selected.unit}`} />
+        <StatChip label="Min"     value={`${currentStats.min.toFixed(1)} ${selected.unit}`} />
+        <StatChip label="Max"     value={`${currentStats.max.toFixed(1)} ${selected.unit}`} />
+        <StatChip label="Std dev" value={`± ${currentStats.stddev.toFixed(2)}`} />
       </div>
+    </div>
+  );
+}
+
+function StatChip({ label, value }) {
+  return (
+    <div className="p-3 rounded-lg bg-agentx-bg border border-agentx-border">
+      <p className="text-[10px] uppercase tracking-wider text-agentx-muted">{label}</p>
+      <p className="text-sm font-bold mt-1">{value}</p>
     </div>
   );
 }

@@ -8,7 +8,8 @@ const SEVERITY = {
 
 export default function AnomalyFeed({ anomalies, count = 43 }) {
   return (
-    <div className="bg-agentx-card border border-agentx-border rounded-xl flex flex-col">
+    <div className="bg-agentx-card border border-agentx-border rounded-xl flex flex-col h-[520px]">
+      {/* Header — fixed at top */}
       <div className="p-5 border-b border-agentx-border flex items-start justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
@@ -24,10 +25,14 @@ export default function AnomalyFeed({ anomalies, count = 43 }) {
         </span>
       </div>
 
-      <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: "420px" }}>
-        {anomalies.map((a) => <AnomalyItem key={a.id} anomaly={a} />)}
+      {/* Scrollable list — takes remaining height */}
+      <div className="p-4 space-y-3 overflow-y-auto flex-1">
+        {anomalies.map((a) => (
+          <AnomalyItem key={a.id} anomaly={a} />
+        ))}
       </div>
 
+      {/* Footer — fixed at bottom */}
       {anomalies.length > 3 && (
         <div className="px-4 py-2 border-t border-agentx-border text-center flex-shrink-0">
           <span className="inline-flex items-center gap-1 text-[10px] text-agentx-muted">
