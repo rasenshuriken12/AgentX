@@ -1,16 +1,15 @@
-import { AlertTriangle, Zap } from "lucide-react";
+import { AlertTriangle, Zap, ChevronDown } from "lucide-react";
 
 const SEVERITY = {
-  CRITICAL: { bg: "bg-agentx-redSoft", text: "text-agentx-red", label: "CRITICAL" },
+  CRITICAL: { bg: "bg-agentx-redSoft",    text: "text-agentx-red",    label: "CRITICAL" },
   WARNING:  { bg: "bg-agentx-yellowSoft", text: "text-agentx-yellow", label: "WARNING" },
-  INFO:     { bg: "bg-blue-50", text: "text-agentx-blue", label: "INFO" },
+  INFO:     { bg: "bg-blue-50",           text: "text-agentx-blue",   label: "INFO" },
 };
 
 export default function AnomalyFeed({ anomalies, count = 43 }) {
   return (
-    <div className="bg-agentx-card border border-agentx-border rounded-xl">
-      {/* Header */}
-      <div className="p-5 border-b border-agentx-border flex items-start justify-between">
+    <div className="bg-agentx-card border border-agentx-border rounded-xl flex flex-col">
+      <div className="p-5 border-b border-agentx-border flex items-start justify-between flex-shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-agentx-yellow" />
@@ -25,12 +24,18 @@ export default function AnomalyFeed({ anomalies, count = 43 }) {
         </span>
       </div>
 
-      {/* List */}
-      <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-        {anomalies.map((a) => (
-          <AnomalyItem key={a.id} anomaly={a} />
-        ))}
+      <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: "420px" }}>
+        {anomalies.map((a) => <AnomalyItem key={a.id} anomaly={a} />)}
       </div>
+
+      {anomalies.length > 3 && (
+        <div className="px-4 py-2 border-t border-agentx-border text-center flex-shrink-0">
+          <span className="inline-flex items-center gap-1 text-[10px] text-agentx-muted">
+            <ChevronDown className="w-3 h-3" />
+            Scroll to see {anomalies.length - 3} more
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -39,8 +44,8 @@ function AnomalyItem({ anomaly }) {
   const sev = SEVERITY[anomaly.severity] || SEVERITY.INFO;
   return (
     <div className="bg-agentx-yellowSoft/40 border border-agentx-yellow/20 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold">{anomaly.metric}</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${sev.bg} ${sev.text}`}>
             {sev.label}

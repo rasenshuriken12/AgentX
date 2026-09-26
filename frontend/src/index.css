@@ -20,3 +20,18 @@ body {
   50%      { opacity: 0.4; }
 }
 .animate-pulse-soft { animation: pulseSoft 1.6s ease-in-out infinite; }
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Prevent accidental horizontal scroll on the whole page */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Any element that might overflow must scroll itself, not push the layout */
+.agentx-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

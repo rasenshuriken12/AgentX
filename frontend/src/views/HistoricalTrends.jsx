@@ -1,7 +1,7 @@
 import HistoricalChart from "../components/cards/HistoricalChart";
 import AnomalyDonut from "../components/cards/AnomalyDonut";
 
-export default function Historical() {
+export default function HistoricalTrends() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2">
